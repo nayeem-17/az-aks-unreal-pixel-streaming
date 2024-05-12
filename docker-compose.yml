@@ -1,0 +1,55 @@
+version: '3.8'  # Or '3.1' for older Docker Compose versions
+
+services:
+  matchmaker:
+    image: fancy.azurecr.io/matchmaker:4.27
+    ports:
+      - "90:90"
+      - "9999:9999"
+    volumes:
+      - pixel-streaming-config:/config
+    environment:
+      - UE_SERVER_PORT=9999 # If your Matchmaker image needs this
+      - UE_SERVER_HOST=matchmaker # If your Matchmaker image needs this
+      # ... other necessary Matchmaker environment variables ...
+
+  signallingserver:
+    image: fancy.azurecr.io/signallingwebserver:4.27
+    ports:
+      - "80:80"
+      - "8888:8888"
+    volumes:
+      - pixel-streaming-config:/config
+    depends_on:
+      - matchmaker  # Wait for matchmaker to be ready
+      - turnserver  # Wait for turnserver to be ready
+    environment:
+      # These would be dynamically set in Kubernetes
+      - SIGNALSERVER_URL=ws://signallingserver:8888
+      - turnLoadBalancerIP=turnserver # Replace with turnserver's IP if not resolvable by name
+      # ... other necessary SignallingServer environment variables ...
+    command: 
+      - --configFile=/config/signallingserver.json
+      - --peerConnectionOptions={"iceServers":[{"urls":["turn:$(turnLoadBalancerIP):3478"],"username":"usr","credential":"usr123"}]}
+      - --PublicIp=0.0.0.0  # Bind to all interfaces
+    
+  game:
+    image: fancy.azurecr.io/game:4.27
+    environment:
+      - SIGNALSERVER_URL=ws://signallingserver:8888
+      # ... other game environment variables ...
+
+  turnserver:
+    image: fancy.azurecr.io/turn:latest
+    ports:
+      - "3478:3478"  
+      - "3478:3478/udp"  # UDP for TURN
+    command: # Add any necessary TURN server configuration commands
+
+volumes:
+  pixel-streaming-config:
+    driver: local  
+    driver_opts:
+      type: none
+      device: ./pixel-streaming-config  # Create a local directory for config files
+      o: bind
