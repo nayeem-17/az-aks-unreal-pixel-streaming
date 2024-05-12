@@ -1,7 +1,7 @@
 # Update your Docker Hub username here
 DOCKER_HUB_USER="n0x41yeem"  # Replace with your actual username
 # Update your container registry name here (if applicable)
-CONTAINER_REG= $DOCKER_HUB_USER
+CONTAINER_REG=$DOCKER_HUB_USER
 
 # Build Matchmaker image
 cd Matchmaker/platform_scripts/bash
